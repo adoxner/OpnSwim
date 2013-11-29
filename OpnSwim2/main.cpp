@@ -37,8 +37,8 @@ Mat edges_img;      //edges
 vector<Vec4i> lines;
 
 
-static int BLUR_KERNEL = 51;
-static double CANNY_T = 6.0;
+static int BLUR_KERNEL = 71;
+static double CANNY_T = 8.0;
 
 
 
@@ -46,7 +46,7 @@ static double CANNY_T = 6.0;
 int main( int argc, char** argv )
 {
     //open file
-    const char* filename = argc >= 2 ? argv[1] : "pool .jpg";
+    const char* filename = argc >= 2 ? argv[1] : "pool.jpg";
     src = imread(filename, 1);
     if(src.empty())
     {
@@ -127,11 +127,17 @@ int main( int argc, char** argv )
     //narrow down lines to ones that intersect in the image (set 1)
     //
     Vector<pair<Vec4i, Vec4i>> set1;
-    Point temp, bounds = Point(downsampled_b.rows, downsampled_b.cols);
+    Point temp, bounds = Point(downsampled_b.cols, downsampled_b.rows);
+    double dist_limit = max(downsampled_b.cols, downsampled_b.rows)/3.0;
     for (size_t i=0; i<lines.size(); ++i) {
         for (size_t j=i+1; j<lines.size(); ++j) {
             
+            
             temp = getIntersection(lines.at(i), lines.at(j));
+            //cout << "x: " << temp.x << " y: " << temp.y << '\n';
+            
+            //circle(final_img, temp, 4, CV_RGB(0, 255, 0));
+            
             if (pointWithinBounds(temp, bounds)) {
                 //if it's within bounds, add it
                 pair<Vec4i, Vec4i> p = pair<Vec4i, Vec4i>(lines.at(i), lines.at(j));
@@ -140,7 +146,7 @@ int main( int argc, char** argv )
             
         }
     }
-    cout << "Added " << set1.size() << " inbounds intersections.\n";
+    cout << "Added " << set1.size() << " inbounds intersections. (set1)\n";
     
     
     //narrow down set 1 further to sets of three lines that have two intersects in frame (set 2)
@@ -151,7 +157,21 @@ int main( int argc, char** argv )
         for (size_t j=i+1; j<set1.size(); ++j) {
             
             temp = getIntersection(set1[i].second, set1[j].first);
-            if (pointWithinBounds(temp, bounds) && set1[i].second != set1[j].first) {
+            
+            Point pi = getIntersection(set1[i].first, set1[i].second);
+            Point pj = getIntersection(set1[j].first, set1[j].second);
+            
+            double dista1 = norm(temp - pi);
+            double dista2 = norm(temp - pj);
+            double hy =     norm(pi - pj);
+            
+            if (pointWithinBounds(temp, bounds)
+                && set1[i].second != set1[j].first
+                && dista1 > dist_limit
+                && dista2 > dist_limit
+                && hy > dista1
+                && hy > dista2) {
+                
                 //if it's within bounds, add it
                 pair< pair<Vec4i, Vec4i>, pair<Vec4i, Vec4i> > p =
                     pair< pair<Vec4i, Vec4i>, pair<Vec4i, Vec4i> >(
@@ -162,28 +182,80 @@ int main( int argc, char** argv )
             
         }
     }
-    cout << "Added " << set2.size() << " inbounds corner pairs.\n";
+    cout << "Added " << set2.size() << " inbounds corner pairs. (set2)\n";
+    
+    imshow("final_img", final_img);
+    
+    
     
     
     //use set 1 to find a line having intersects with the two outer lines of each entry in set 2 (set 3)
     //
     Vector< tuple<Vec4i, Vec4i, Vec4i, Vec4i> > set3;
+    double current_largest_area = 0.0;
+    vector<Point> large;
     
     for (size_t i=0; i<set2.size(); ++i) {
         for (size_t j=i+1; j<set2.size(); ++j) {
             temp = getIntersection(set2[i].first.first, set2[j].second.second);
             if (pointWithinBounds(temp, bounds) && set2[i].first.first != set2[j].second.second) {
+                
                 tuple<Vec4i, Vec4i, Vec4i, Vec4i> t =
                     tuple<Vec4i, Vec4i, Vec4i, Vec4i>(set2[i].first.first, set2[i].first.second,
                                                       set2[j].second.first, set2[j].second.second);
+                
+                
+                
+                Point a = getIntersection(get<0>(t), get<1>(t));
+                Point b = getIntersection(get<1>(t), get<2>(t));
+                Point c = getIntersection(get<2>(t), get<3>(t));
+                Point d = getIntersection(get<0>(t), get<3>(t));
+                
+                if (!((a.x < downsampled_b.cols/2 || b.x < downsampled_b.cols/2 || c.x < downsampled_b.cols/2 || d.x < downsampled_b.cols)
+                    &&(a.x > downsampled_b.cols/2 || b.x > downsampled_b.cols/2 || c.x > downsampled_b.cols/2 || d.x > downsampled_b.cols)
+                    &&(a.y < downsampled_b.rows/2 || b.y < downsampled_b.rows/2 || c.y < downsampled_b.rows/2 || d.y < downsampled_b.rows)
+                    &&(a.y > downsampled_b.rows/2 || b.y > downsampled_b.rows/2 || c.y > downsampled_b.rows/2 || d.y > downsampled_b.rows))
+                    || !pointWithinBounds(a, bounds)
+                    || !pointWithinBounds(b, bounds)
+                    || !pointWithinBounds(c, bounds)
+                    || !pointWithinBounds(d, bounds)) {
+                    continue;
+                }
+                
+                vector<Point> set3_contours;
+                set3_contours.push_back(a);
+                set3_contours.push_back(b);
+                set3_contours.push_back(c);
+                set3_contours.push_back(d);
+                
+                double the_area = contourArea(set3_contours);
+                if (the_area > current_largest_area) {
+                    current_largest_area = the_area;
+                    large = set3_contours;
+                }
+                
+                
                 set3.push_back(t);
             }
         }
     }
-    cout << "Found " << set3.size() << " pool canidates.\n";
+    cout << "Found " << set3.size() << " pool canidates. (set3)\n";
+    
+    
+    cout << "Here's the largest:\n";
+    for (int i=0; i<large.size(); ++i) {
+        cout << '(' << large[i].x << ',' << large[i].y << ") ";
+        circle(final_img, large[i], 4, CV_RGB(0, 255, 0));
+    }
+    cout << '\n';
+    
     
     
     //check set 3 for the pool + draw it
+    
+    
+    //attempt 1: find largest area
+    
     
     
     //show image

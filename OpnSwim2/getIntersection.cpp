@@ -18,8 +18,9 @@ Point getIntersection(Vec4i l1, Vec4i l2){
     double m1 = double(l1[3] - l1[1])/double(l1[2] - l1[0]);
     double m2 = double(l2[3] - l2[1])/double(l2[2] - l2[0]);
     
-    if (m1 == m2 || abs(m1-m2)<0.3) //difference in slope threshold
+    if (m1 == m2)// || abs(m1-m2)<0.01) //difference in slope threshold
         return intersect;
+    
     
     
     
@@ -38,6 +39,7 @@ Point getIntersection(Vec4i l1, Vec4i l2){
     return intersect;
 }
 
+
 bool intersectionWithinBounds(Vec4i l1, Vec4i l2, Point bounds){
     Point temp = getIntersection(l1, l2);
     if (temp.x < 0
@@ -45,7 +47,6 @@ bool intersectionWithinBounds(Vec4i l1, Vec4i l2, Point bounds){
         || temp.x > bounds.x
         || temp.y > bounds.y){
         return false;
-        
     }
     
     return true;

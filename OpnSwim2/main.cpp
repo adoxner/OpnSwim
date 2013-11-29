@@ -46,7 +46,7 @@ static double CANNY_T = 8.0;
 int main( int argc, char** argv )
 {
     //open file
-    const char* filename = argc >= 2 ? argv[1] : "pool.jpg";
+    const char* filename = argc >= 2 ? argv[1] : "pool_demo.jpg";
     src = imread(filename, 1);
     if(src.empty())
     {
@@ -63,7 +63,7 @@ int main( int argc, char** argv )
     GaussianBlur( src, blurred_img, Size(BLUR_KERNEL, BLUR_KERNEL), 0, 0 );
     
     imshow("blurred_img", blurred_img);
-    waitKey();
+    //waitKey();
     
     
     /*
@@ -83,7 +83,7 @@ int main( int argc, char** argv )
     imshow("b of blurred_img", rgb[0]);
     //imshow("g", rgb[1]);
     //imshow("R of weighted_img", rgb[2]);
-    waitKey();
+    //waitKey();
     
     
     //downsample
@@ -93,7 +93,7 @@ int main( int argc, char** argv )
     //downsampled_b = rgb[0];
     
     imshow("downsampled_b", downsampled_b);
-    waitKey();
+    //waitKey();
     
     
     //edge detect on r
@@ -102,7 +102,7 @@ int main( int argc, char** argv )
     Canny(downsampled_b, edges, CANNY_T, 3*CANNY_T);
     
     imshow("edges", edges);
-    waitKey();
+    //waitKey();
     
     
     
@@ -119,9 +119,9 @@ int main( int argc, char** argv )
     for( size_t i = 0; i < lines.size(); i++ )
     {
         Vec4i l = lines[i];
-        line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
+        line( edges, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
     }
-    
+    imshow("edges", edges);
     
     
     //narrow down lines to ones that intersect in the image (set 1)
@@ -192,6 +192,7 @@ int main( int argc, char** argv )
     //use set 1 to find a line having intersects with the two outer lines of each entry in set 2 (set 3)
     //
     Vector< tuple<Vec4i, Vec4i, Vec4i, Vec4i> > set3;
+    Vector< tuple<Vec4i, Vec4i, Vec4i, Vec4i> > set3_largest;
     double current_largest_area = 0.0;
     vector<Point> large;
     
@@ -232,6 +233,7 @@ int main( int argc, char** argv )
                 if (the_area > current_largest_area) {
                     current_largest_area = the_area;
                     large = set3_contours;
+                    set3_largest.push_back(t);
                 }
                 
                 
@@ -242,12 +244,6 @@ int main( int argc, char** argv )
     cout << "Found " << set3.size() << " pool canidates. (set3)\n";
     
     
-    cout << "Here's the largest:\n";
-    for (int i=0; i<large.size(); ++i) {
-        cout << '(' << large[i].x << ',' << large[i].y << ") ";
-        circle(final_img, large[i], 4, CV_RGB(0, 255, 0));
-    }
-    cout << '\n';
     
     
     
@@ -255,7 +251,75 @@ int main( int argc, char** argv )
     
     
     //attempt 1: find largest area
+    //
+    cout << "Here's the largest:\n";
+    for (int i=0; i<large.size(); ++i) {
+        cout << '(' << large[i].x << ',' << large[i].y << ") ";
+        circle(final_img, large[i], 4, CV_RGB(0, 255, 0));
+    }
+    cout << '\n';
     
+    vector<Vec4i> pool_outline;
+    if (large.size() == 4){
+        /*
+        line( final_img, large[0], large[1], Scalar(0,0,255), 2, CV_AA);
+        line( final_img, large[1], large[2], Scalar(0,0,255), 2, CV_AA);
+        line( final_img, large[2], large[3], Scalar(0,0,255), 2, CV_AA);
+        line( final_img, large[0], large[3], Scalar(0,0,255), 2, CV_AA);
+        */
+        
+        Vec4i sa = {large[0].x, large[0].y, large[1].x, large[1].y};
+        Vec4i sb = {large[1].x, large[1].y, large[2].x, large[2].y};
+        Vec4i sc = {large[2].x, large[2].y, large[3].x, large[3].y};
+        Vec4i sd = {large[0].x, large[0].y, large[3].x, large[3].y};
+        pool_outline.push_back(sa);
+        pool_outline.push_back(sb);
+        pool_outline.push_back(sc);
+        pool_outline.push_back(sd);
+    }
+    
+    //sort pool_outline by side length
+    struct size_sort
+    {
+        inline bool operator() (const Vec4i& struct1, const Vec4i& struct2)
+        {
+            Point a = {struct1[0], struct1[1]};
+            Point b = {struct1[2], struct1[3]};
+            Point c = {struct2[0], struct2[1]};
+            Point d = {struct2[2], struct2[3]};
+            
+            return (norm(a-b) < norm(c-d));
+        }
+    };
+    sort(pool_outline.begin(), pool_outline.end(), size_sort());
+    
+    
+    for (int i=0; i<pool_outline.size(); ++i) {
+        if (i !=3 &&
+             !(pool_outline[3][0] != pool_outline[i][0]
+            && pool_outline[3][1] != pool_outline[i][1]
+            && pool_outline[3][2] != pool_outline[i][2]
+            && pool_outline[3][3] != pool_outline[i][3]
+               
+            && pool_outline[3][0] != pool_outline[i][2]
+            && pool_outline[3][1] != pool_outline[i][3]
+            && pool_outline[3][2] != pool_outline[i][0]
+            && pool_outline[3][3] != pool_outline[i][1])) {
+            continue;
+        }
+        //THIS IS A 25yrd SIDE
+        line( final_img, Point(pool_outline[i][0], pool_outline[i][1]), Point(pool_outline[i][2], pool_outline[i][3]), Scalar(0,0,255), 2, CV_AA);
+    }
+    
+    
+    
+    //find lane lines
+    //
+    if (set3_largest.size() > 0) {
+        tuple<Vec4i, Vec4i, Vec4i, Vec4i> pool_outline = set3_largest[set3_largest.size()-1];
+        Vec4i smallest_side, small_side, large_side, largest_side;
+        
+    }
     
     
     //show image

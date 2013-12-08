@@ -21,5 +21,9 @@ Point getIntersection(Vec4i l1, Vec4i l2);
 Point intersectionWithinBounds(Vec4i l1, Vec4i l2, int rows, int cols);
 
 bool pointWithinBounds(Point p, Point bounds);
+bool pointWithinBounds(Point p, Point lower_bounds, Point upper_bounds);
+
+vector<Point> my_kmeans(vector<Point> input_v, int k, int threshold);
+
 
 #endif /* defined(__OpnSwim2__getIntersection__) */

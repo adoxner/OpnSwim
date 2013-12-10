@@ -67,7 +67,7 @@ struct vec_pair_sort
 int main( int argc, char** argv )
 {
     //open file
-    const char* filename = argc >= 2 ? argv[1] : "pools/3.jpg";
+    const char* filename = argc >= 2 ? argv[1] : "pools/2.jpg";
     src = imread(filename, 1);
     if(src.empty())
     {
@@ -191,7 +191,7 @@ int main( int argc, char** argv )
     for( size_t i = 0; i < lines.size(); i++ )
     {
         Vec4i l = lines[i];
-        line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,0), 3, CV_AA);
+        line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,0), 2, CV_AA);
     }
     
     
@@ -339,7 +339,7 @@ int main( int argc, char** argv )
             largest_pool = set2[i];
         }
     }
-    
+    if (largest_pool.size() == 0) return 0;
     
     
     //**************  ORIENTATION  *****************
@@ -349,10 +349,12 @@ int main( int argc, char** argv )
     double ll_edge = 8;
     
     //re-blur src
-    Mat ll_src = rgb[0]-rgb[1]+rgb[2];
+    Mat ll_src = rgb[1]-rgb[2];
     pyrDown( ll_src, ll_src, Size( ll_src.cols/2, ll_src.rows/2 ));
     
     GaussianBlur( ll_src, ll_src, Size(ll_blur, ll_blur), 0, 0 );
+    
+    imshow("ll_src", ll_src);
     
     //edges on that
     Mat ll_edges;
@@ -362,25 +364,67 @@ int main( int argc, char** argv )
     imshow("ll lines", ll_edges);
     
     //(out, lines, resolution_in_pixels, resolution_in_radians, threshold, minLinLength, maxLineGap)
-    HoughLinesP(ll_edges, lines, 1, 1*CV_PI/180, 50, 10, 3);
+    HoughLinesP(ll_edges, lines, 1, 1*CV_PI/180, 30, 10, 3);
+    vector<Vec4i> inbounds_lines;
+    vector<unsigned> intersect_count = {0,0,0,0};
     
     for( size_t i = 0; i < lines.size(); i++ )
     {
         Vec4i l = lines[i];
-        line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
+        if ( pointPolygonTest(pool_contour, Point(l[0], l[1]), 0) > 0
+            ||pointPolygonTest(pool_contour, Point(l[2], l[3]), 0) > 0) {
+            
+            Vec4i a = {largest_pool[0].x,largest_pool[0].y,largest_pool[1].x,largest_pool[1].y},
+                    b = {largest_pool[1].x,largest_pool[1].y,largest_pool[2].x,largest_pool[2].y},
+                    c = {largest_pool[2].x,largest_pool[2].y,largest_pool[3].x,largest_pool[3].y},
+                    d = {largest_pool[3].x,largest_pool[3].y,largest_pool[0].x,largest_pool[0].y};
+            
+            if (pool_rect.contains(getIntersection(l, a)) )
+                circle(final_img, getIntersection(l, a), 4, Scalar(255,255,0));
+                intersect_count[0]++;
+            if (pool_rect.contains(getIntersection(l, b)) )
+                circle(final_img, getIntersection(l, b), 4, Scalar(255,255,0));
+                intersect_count[1]++;
+            if (pool_rect.contains(getIntersection(l, c)) )
+                circle(final_img, getIntersection(l, c), 4, Scalar(255,255,0));
+                intersect_count[2]++;
+            if (pool_rect.contains(getIntersection(l, d)) )
+                circle(final_img, getIntersection(l, d), 4, Scalar(255,255,0));
+                intersect_count[3]++;
+            
+            
+            inbounds_lines.push_back(l);
+            //line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
+        }
+        
     }
     
+    unsigned side_1 = intersect_count[0]+intersect_count[2], side_2 = intersect_count[1]+intersect_count[3];
     
     
-    
-    
+    cout << "side1: " << side_1 << " side2: " << side_2 << '\n';
     
     if (largest_pool.size() > 0) {
-        line(final_img, largest_pool[0], largest_pool[1], Scalar(0,0,255), 2);
-        line(final_img, largest_pool[1], largest_pool[2], Scalar(0,0,255), 2);
-        line(final_img, largest_pool[2], largest_pool[3], Scalar(0,0,255), 2);
-        line(final_img, largest_pool[3], largest_pool[0], Scalar(0,0,255), 2);
+        
+        // pool ends are red
+        if (side_1 > side_2) {
+            line(final_img, largest_pool[0], largest_pool[1], Scalar(0,0,255), 2);
+            line(final_img, largest_pool[1], largest_pool[2], Scalar(255,255,255), 2);
+            line(final_img, largest_pool[2], largest_pool[3], Scalar(0,0,255), 2);
+            line(final_img, largest_pool[3], largest_pool[0], Scalar(255,255,255), 2);
+        }else{
+            line(final_img, largest_pool[0], largest_pool[1], Scalar(255,255,255), 2);
+            line(final_img, largest_pool[1], largest_pool[2], Scalar(0,0,255), 2);
+            line(final_img, largest_pool[2], largest_pool[3], Scalar(255,255,255), 2);
+            line(final_img, largest_pool[3], largest_pool[0], Scalar(0,0,255), 2);
+        }
+        
+        
     }
+    
+    
+    
+    
     
     
     circle(final_img, contour_moment, 7, Scalar(0,255,255));

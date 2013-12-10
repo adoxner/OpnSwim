@@ -64,6 +64,7 @@
 		4F7B3DA41827329C00CD5944 /* libopencv_ts.2.4.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_ts.2.4.3.dylib; sourceTree = "<group>"; };
 		4F7B3DA51827329C00CD5944 /* libopencv_video.2.4.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_video.2.4.3.dylib; sourceTree = "<group>"; };
 		4F7B3DA61827329C00CD5944 /* libopencv_videostab.2.4.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_videostab.2.4.3.dylib; sourceTree = "<group>"; };
+		4FC425E918569E460052AC22 /* main */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main; sourceTree = "<group>"; };
 		4FC801401830521F00B6B251 /* Quadrilateral.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Quadrilateral.cpp; sourceTree = "<group>"; };
 		4FC801411830521F00B6B251 /* Quadrilateral.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Quadrilateral.h; sourceTree = "<group>"; };
 		4FC80143183055E300B6B251 /* getIntersection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = getIntersection.cpp; sourceTree = "<group>"; };
@@ -118,6 +119,7 @@
 		4F7B3D8C1826F0EF00CD5944 /* OpnSwim2 */ = {
 			isa = PBXGroup;
 			children = (
+				4FC425E818569E380052AC22 /* Legacy */,
 				4F7B3D8D1826F0EF00CD5944 /* main.cpp */,
 				4FC801461830565A00B6B251 /* Custom classes */,
 				4F7B3D8F1826F0EF00CD5944 /* OpnSwim2.1 */,
@@ -147,6 +149,14 @@
 				4F7B3DA61827329C00CD5944 /* libopencv_videostab.2.4.3.dylib */,
 			);
 			name = OpenCV;
+			sourceTree = "<group>";
+		};
+		4FC425E818569E380052AC22 /* Legacy */ = {
+			isa = PBXGroup;
+			children = (
+				4FC425E918569E460052AC22 /* main */,
+			);
+			name = Legacy;
 			sourceTree = "<group>";
 		};
 		4FC801461830565A00B6B251 /* Custom classes */ = {

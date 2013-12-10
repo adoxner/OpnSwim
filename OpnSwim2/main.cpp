@@ -40,7 +40,6 @@ vector<Vec4i> lines;
 
 static int BLUR_KERNEL = 61;
 static double CANNY_T = 7.2;
-static int NUM_LANES = 8;
 
 
 struct size_sort
@@ -68,7 +67,7 @@ struct vec_pair_sort
 int main( int argc, char** argv )
 {
     //open file
-    const char* filename = argc >= 2 ? argv[1] : "pools/1.jpg";
+    const char* filename = argc >= 2 ? argv[1] : "pools/3.jpg";
     src = imread(filename, 1);
     if(src.empty())
     {
@@ -79,55 +78,39 @@ int main( int argc, char** argv )
     cvtColor(src, src_gray, CV_RGB2GRAY);
     
     
-    //calculate appropriate blur
-    BLUR_KERNEL =  ceil(MIN(src.rows, src.cols)/7);
+    //**********  CALCULATE BLUR RADIUS  ************
+    
+    BLUR_KERNEL =  ceil(MIN(src.rows, src.cols)/10);
     if (BLUR_KERNEL % 2 == 0) BLUR_KERNEL++;
+    //BLUR_KERNEL -= 10;
     if (BLUR_KERNEL > 90) BLUR_KERNEL = 91;
     cout << "BLUR_KERNEL: " << BLUR_KERNEL << '\n';
     
     
     
-    //blur source image
-    //
+    //***********  GAUSSIAN BLUR  **********
+    
     GaussianBlur( src, blurred_img, Size(BLUR_KERNEL, BLUR_KERNEL), 0, 0 );
-    //GaussianBlur( src_gray, src_gray, Size(BLUR_KERNEL, BLUR_KERNEL), 0, 0 );
-    
-    imshow("blurred_img", blurred_img);
-    //waitKey();
+
     
     
-    /*
-    //combine with source
-    //addWeighted(blurred_img, 3, src, 0.5, 0.0, weighted_img);
-    weighted_img = blurred_img;
     
-    imshow("weighted_img", weighted_img);
-    waitKey();
-     */
+    //***********  RGB SPLIT  *************
     
-    
-    //split into rgb
-    //
     split(blurred_img, rgb);
 
-    //GaussianBlur( src_gray+rgb[0]-rgb[2], src_gray, Size(BLUR_KERNEL, BLUR_KERNEL), 0, 0 );
     GaussianBlur( src_gray + rgb[0] - rgb[2] , src_gray, Size(BLUR_KERNEL, BLUR_KERNEL), 0, 0 );
+    //src_gray = src_gray + rgb[0] - rgb[2];
     
     Mat temp_mat;
     GaussianBlur(src_gray, temp_mat, cv::Size(0,0), 3);
     addWeighted(src_gray, 1.5, temp_mat, -0.9, 0, temp_mat);
     src_gray = temp_mat;
-    
-    imshow("b of blurred_img", src_gray);
-    //imshow("g", rgb[1]);
-    //imshow("R of weighted_img", rgb[2]);
-    //waitKey();
+
     
     
+    //************  DOWNSAMPLE  *************
     
-    
-    //downsample
-    //
     Mat downsampled_b;
     if ( MIN(src.rows, src.cols) > 100 ) {
         pyrDown( src_gray, downsampled_b, Size( rgb[2].cols/2, rgb[2].rows/2 ));
@@ -135,8 +118,7 @@ int main( int argc, char** argv )
         downsampled_b = src_gray;
     }
     
-    //pyrDown( downsampled_b, downsampled_b, Size( downsampled_b.cols/2, downsampled_b.rows/2 ));
-    //downsampled_b = rgb[2];
+    
     
     // threshold
     cout << "mean: " << cv::mean(downsampled_b) << '\n';
@@ -145,24 +127,60 @@ int main( int argc, char** argv )
 
     
     
-    imshow("downsampled_b", downsampled_b);
+    imshow("threshold", downsampled_b);
     //waitKey();
     
     
-    
-    //edge detect on r
-    //
+    //**********  CANNY EDGE DETECTION  *************
+
     Mat edges;
     Canny(downsampled_b, edges, CANNY_T, 3*CANNY_T);
     
-    imshow("edges", edges);
+    //imshow("edges", edges);
     //waitKey();
     
     
     
-    //find lines in edges image
-    //
-    HoughLinesP(edges, lines, 3, CV_PI/180, 50, BLUR_KERNEL/2, 10 );
+    //***********  CONTOUR DETECTION  *************
+    
+    // find largest contour
+    Mat contours_img;
+    pyrDown( src, contours_img, Size( rgb[2].cols/2, rgb[2].rows/2 ));
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+    findContours(downsampled_b, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
+    double current_largest_contour_area = 0.0;
+    int that_countour = -1;
+    
+    for (int i=0; i<contours.size(); ++i) {
+        double area = contourArea(contours[i]);
+        if (area > current_largest_contour_area) {
+            current_largest_contour_area = area;
+            that_countour = i;
+        }
+    }
+    
+    edges = Mat::zeros(edges.rows, edges.cols, CV_8U);
+    drawContours(edges, contours, that_countour, Scalar(255,0,255));
+    imshow("edges", edges);
+    
+    vector<Point> pool_contour = contours[that_countour];
+    Moments m = moments(pool_contour);
+    Point contour_moment = Point(m.m10/m.m00, m.m01/m.m00);
+    
+    Rect pool_rect = boundingRect(pool_contour);
+    int pool_fix = BLUR_KERNEL/3;
+    pool_rect.x -= pool_fix;
+    pool_rect.y -= pool_fix;
+    pool_rect.width += pool_fix*2;
+    pool_rect.height += pool_fix*2;
+    
+    
+    
+    //***********  HOUGH TRANSFORM ****************
+    
+    //(out, lines, resolution_in_pixels, resolution_in_radians, threshold, minLinLength, maxLineGap)
+    HoughLinesP(edges, lines, 3, 1*CV_PI/180, 20, BLUR_KERNEL/3, BLUR_KERNEL/8 );
     
     
     
@@ -175,27 +193,28 @@ int main( int argc, char** argv )
         Vec4i l = lines[i];
         line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,0), 3, CV_AA);
     }
-    imshow("edges", edges);
     
+    
+    
+    
+    
+    
+    //*********  SET 1  *************
     
     //narrow down lines to ones that intersect in the image (set 1)
-    //
     Vector<pair<Vec4i, Vec4i>> set1;
-    Point temp, bounds = Point(downsampled_b.cols, downsampled_b.rows);
-    double dist_limit = max(downsampled_b.cols, downsampled_b.rows)/3.0;
+    Point temp, temp1, temp2, bounds = Point(downsampled_b.cols, downsampled_b.rows);
+    
     for (size_t i=0; i<lines.size(); ++i) {
         for (size_t j=i+1; j<lines.size(); ++j) {
             
-            
             temp = getIntersection(lines.at(i), lines.at(j));
-            //cout << "x: " << temp.x << " y: " << temp.y << '\n';
             
-            //circle(final_img, temp, 4, CV_RGB(0, 255, 0));
-            
-            if (pointWithinBounds(temp, bounds)) {
+            if (pointWithinBounds(temp, bounds) && pool_rect.contains(temp)) {
                 //if it's within bounds, add it
                 pair<Vec4i, Vec4i> p = pair<Vec4i, Vec4i>(lines.at(i), lines.at(j));
                 set1.push_back(p);
+                //circle(final_img, temp, 5, Scalar(255,0,255));
             }
             
         }
@@ -203,165 +222,129 @@ int main( int argc, char** argv )
     cout << "Added " << set1.size() << " inbounds intersections. (set1)\n";
     
     
+    
+    
+    
+    
+    //************  SET 2  ************
+    
     //narrow down set 1 further to sets of three lines that have two intersects in frame (set 2)
-    //
-    Vector< pair< pair<Vec4i, Vec4i>, pair<Vec4i, Vec4i> > > set2;
+    vector< vector<Point> > set2;
+    double dist_limit = max(downsampled_b.cols, downsampled_b.rows)/3.0;
+    double angle_threshold_low = 20.0, angle_threshold_high = 170;
     
     for (size_t i=0; i<set1.size(); ++i) {
         for (size_t j=0; j<set1.size(); ++j) {
             
-            temp = getIntersection(set1[i].second, set1[j].first);
+            temp1 = getIntersection(set1[i].second, set1[j].first);
+            temp2 = getIntersection(set1[i].first, set1[j].second);
             
-            Point pi = getIntersection(set1[i].first, set1[i].second);
-            Point pj = getIntersection(set1[j].first, set1[j].second);
-            
-            double dista1 = norm(temp - pi);
-            double dista2 = norm(temp - pj);
-            double hy =     norm(pi - pj);
-            
-            if (pointWithinBounds(temp, bounds)
-                && set1[i].second != set1[j].first
-                && dista1 > dist_limit
-                && dista2 > dist_limit
-                && hy > dista1
-                && hy > dista2) {
-                
-                //if it's within bounds, add it
-                pair< pair<Vec4i, Vec4i>, pair<Vec4i, Vec4i> > p =
-                    pair< pair<Vec4i, Vec4i>, pair<Vec4i, Vec4i> >(
-                        set1[i], set1[j]);
-                
-                set2.push_back(p);
-            }
-            
-        }
-    }
-    cout << "Added " << set2.size() << " inbounds corner pairs. (set2)\n";
-    
-    imshow("final_img", final_img);
-    
-    
-    
-    
-    //use set 1 to find a line having intersects with the two outer lines of each entry in set 2 (set 3)
-    //
-    Vector< tuple<Vec4i, Vec4i, Vec4i, Vec4i> > set3;
-    Vector< tuple<Vec4i, Vec4i, Vec4i, Vec4i> > set3_largest;
-    double current_largest_area = 0.0;
-    vector<Point> large;
-    
-    for (size_t i=0; i<set2.size(); ++i) {
-        for (size_t j=i+1; j<set2.size(); ++j) {
-            temp = getIntersection(set2[i].first.first, set2[j].second.second);
-            if (pointWithinBounds(temp, bounds) && set2[i].first.first != set2[j].second.second) {
-                
-                tuple<Vec4i, Vec4i, Vec4i, Vec4i> t =
-                    tuple<Vec4i, Vec4i, Vec4i, Vec4i>(set2[i].first.first, set2[i].first.second,
-                                                      set2[j].second.first, set2[j].second.second);
+            // check if whole quadrangle within bounds
+            if (pointWithinBounds(temp1, bounds)
+                && pointWithinBounds(temp2, bounds)
+                && pool_rect.contains(temp1)
+                && pool_rect.contains(temp2)) {
                 
                 
+                Point pi = getIntersection(set1[i].first, set1[i].second);
+                Point pj = getIntersection(set1[j].first, set1[j].second);
                 
-                Point a = getIntersection(get<0>(t), get<1>(t));
-                Point b = getIntersection(get<1>(t), get<2>(t));
-                Point c = getIntersection(get<2>(t), get<3>(t));
-                Point d = getIntersection(get<0>(t), get<3>(t));
+                double side_i1_len = norm(pi-temp1);
+                double side_i2_len = norm(pi-temp2);
+                double side_j1_len = norm(pj-temp2);
+                double side_j2_len = norm(pj-temp1);
                 
-                if (!((a.x < downsampled_b.cols/2 || b.x < downsampled_b.cols/2 || c.x < downsampled_b.cols/2 || d.x < downsampled_b.cols)
-                    &&(a.x > downsampled_b.cols/2 || b.x > downsampled_b.cols/2 || c.x > downsampled_b.cols/2 || d.x > downsampled_b.cols)
-                    &&(a.y < downsampled_b.rows/2 || b.y < downsampled_b.rows/2 || c.y < downsampled_b.rows/2 || d.y < downsampled_b.rows)
-                    &&(a.y > downsampled_b.rows/2 || b.y > downsampled_b.rows/2 || c.y > downsampled_b.rows/2 || d.y > downsampled_b.rows))
-                    || !pointWithinBounds(a, bounds)
-                    || !pointWithinBounds(b, bounds)
-                    || !pointWithinBounds(c, bounds)
-                    || !pointWithinBounds(d, bounds)) {
-                    continue;
+                // check if lengths are long enough
+                // at least two sides must be greater than dist_limit (1/3 image size)
+                if ( ((MAX(side_i1_len, side_i2_len) > dist_limit
+                     && MAX(side_j1_len, side_j2_len) > dist_limit)
+                    ||(MAX(side_i1_len, side_j1_len) > dist_limit
+                     && MAX(side_i2_len, side_j2_len) > dist_limit))
+                    && side_i1_len > dist_limit/8
+                    && side_i2_len > dist_limit/8
+                    && side_j1_len > dist_limit/8
+                    && side_j2_len > dist_limit/8
+                    && pointPolygonTest(vector<Point>{temp2, pi, temp1, pj}, contour_moment, 0) > 0)
+                {
+                    
+                    
+                    
+                    // check for sharp angles?
+                    double angle_i = abs(( atan2(pi.y-temp2.y, pi.x-temp2.x) - atan2(pi.y-temp1.y, pi.x-temp1.x) )*180.0/CV_PI);
+                    if (angle_i > 360.0) angle_i -= 360.0;
+                    if (angle_i > 180.0) angle_i -= 180.0;
+                    double angle_j = abs(( atan2(pj.y-temp2.y, pj.x-temp2.x) - atan2(pj.y-temp1.y, pj.x-temp1.x) )*180.0/CV_PI);
+                    if (angle_j > 360.0) angle_j -= 360.0;
+                    if (angle_j > 180.0) angle_j -= 180.0;
+                    double angle_t1 = abs(( atan2(temp1.y-pi.y, temp1.x-pi.x) - atan2(temp1.y-pj.y, temp1.x-pj.x) )*180.0/CV_PI);
+                    if (angle_t1 > 360.0) angle_t1 -= 360.0;
+                    if (angle_t1 > 180.0) angle_t1 -= 180.0;
+                    double angle_t2 = abs(( atan2(temp2.y-pi.y, temp2.x-pi.x) - atan2(temp2.y-pj.y, temp2.x-pj.x) )*180.0/CV_PI);
+                    if (angle_t2 > 360.0) angle_t2 -= 360.0;
+                    if (angle_t2 > 180.0) angle_t2 -= 180.0;
+                    
+                    if (angle_i < angle_threshold_low || angle_i > angle_threshold_high) {
+                        continue;
+                        cout << angle_i << '\n';
+                        circle(final_img, pi, 10, Scalar(0,0,255));
+                    }
+                    if (angle_j < angle_threshold_low || angle_j > angle_threshold_high) {
+                        continue;
+                        cout << angle_j << '\n';
+                        circle(final_img, pj, 10, Scalar(0,0,255));
+                    }
+                    if (angle_t1 < angle_threshold_low || angle_t1 > angle_threshold_high) {
+                        continue;
+                        cout << angle_t1 << '\n';
+                        circle(final_img, temp1, 10, Scalar(0,0,255));
+                    }
+                    if (angle_t2 < angle_threshold_low || angle_t2 > angle_threshold_high) {
+                        continue;
+                        cout << angle_t2 << '\n';
+                        circle(final_img, temp2, 10, Scalar(0,0,255));
+                    }
+                    
+                    
+                    
+                    Scalar color = Scalar(rand()%255, rand()%255, 0);
+                    circle(final_img, temp1, 5, color);
+                    circle(final_img, temp2, 5, color);
+                    circle(final_img, pi, 5, color);
+                    circle(final_img, pj, 5, color);
+                    line(final_img, pi, temp2, color);
+                    line(final_img, temp2, pj, color);
+                    line(final_img, pj, temp1, color);
+                    line(final_img, temp1, pi, color);
+                    
+                    set2.push_back({pi, temp1, pj, temp2});
                 }
                 
-                vector<Point> set3_contours;
-                set3_contours.push_back(a);
-                set3_contours.push_back(b);
-                set3_contours.push_back(c);
-                set3_contours.push_back(d);
-                
-                double the_area = contourArea(set3_contours);
-                if (the_area > current_largest_area) {
-                    current_largest_area = the_area;
-                    large = set3_contours;
-                    set3_largest.push_back(t);
-                }
-                
-                
-                set3.push_back(t);
             }
         }
     }
-    cout << "Found " << set3.size() << " pool canidates. (set3)\n";
-    
-    if (set3.size()<1){ waitKey(); return -1;}
+    cout << "Found " << set2.size() << " pool candidates. (set2)\n";
     
     
     
-    //check set 3 for the pool + draw it
+    //*************  FINAL FILTER  ******************
+    // make this better
     
-    
-    //attempt 1: find largest area
-    //
-    cout << "Here's the largest:\n";
-    for (int i=0; i<large.size(); ++i) {
-        cout << '(' << large[i].x << ',' << large[i].y << ") ";
-        circle(final_img, large[i], 4, CV_RGB(0, 255, 0));
-    }
-    cout << '\n';
-    
-    vector<Vec4i> pool_outline;
-    if (large.size() == 4){
-        /*
-        line( final_img, large[0], large[1], Scalar(0,0,255), 2, CV_AA);
-        line( final_img, large[1], large[2], Scalar(0,0,255), 2, CV_AA);
-        line( final_img, large[2], large[3], Scalar(0,0,255), 2, CV_AA);
-        line( final_img, large[0], large[3], Scalar(0,0,255), 2, CV_AA);
-        */
-        
-        Vec4i sa = {large[0].x, large[0].y, large[1].x, large[1].y};
-        Vec4i sb = {large[1].x, large[1].y, large[2].x, large[2].y};
-        Vec4i sc = {large[2].x, large[2].y, large[3].x, large[3].y};
-        Vec4i sd = {large[0].x, large[0].y, large[3].x, large[3].y};
-        pool_outline.push_back(sa);
-        pool_outline.push_back(sb);
-        pool_outline.push_back(sc);
-        pool_outline.push_back(sd);
-    }
-    
-    //sort pool_outline by side length
-    sort(pool_outline.begin(), pool_outline.end(), size_sort());
-    
-    
-    vector<Vec4i> short_side, long_side;
-    for (int i=0; i<pool_outline.size(); ++i) {
-        if (i !=3 &&
-             !(pool_outline[3][0] != pool_outline[i][0]
-            && pool_outline[3][1] != pool_outline[i][1]
-            && pool_outline[3][2] != pool_outline[i][2]
-            && pool_outline[3][3] != pool_outline[i][3]
-               
-            && pool_outline[3][0] != pool_outline[i][2]
-            && pool_outline[3][1] != pool_outline[i][3]
-            && pool_outline[3][2] != pool_outline[i][0]
-            && pool_outline[3][3] != pool_outline[i][1])) {
-                 
-                 short_side.push_back(pool_outline[i]);
-                 //line( final_img, Point(pool_outline[i][0], pool_outline[i][1]), Point(pool_outline[i][2], pool_outline[i][3]), Scalar(0,255,255), 2, CV_AA);
-             }else{
-                 //THIS IS A 25yrd SIDE
-                 //line( final_img, Point(pool_outline[i][0], pool_outline[i][1]), Point(pool_outline[i][2], pool_outline[i][3]), Scalar(0,0,255), 2, CV_AA);
-                 long_side.push_back(pool_outline[i]);
-             }
+    // naive solution: largest
+    vector<Point> largest_pool;
+    double current_largest_pool_area = 0;
+    for (int i=0; i<set2.size(); ++i) {
+        double area = contourArea(set2[i]);
+        if (area > current_largest_pool_area) {
+            current_largest_pool_area = area;
+            largest_pool = set2[i];
+        }
     }
     
     
     
-    //find lane lines
-    //
+    //**************  ORIENTATION  *****************
+    // finish me!
+
     double ll_blur = 5;
     double ll_edge = 8;
     
@@ -369,95 +352,39 @@ int main( int argc, char** argv )
     Mat ll_src = rgb[0]-rgb[1]+rgb[2];
     pyrDown( ll_src, ll_src, Size( ll_src.cols/2, ll_src.rows/2 ));
     
-    //GaussianBlur( ll_src, ll_src, Size(ll_blur, ll_blur), 0, 0 );
+    GaussianBlur( ll_src, ll_src, Size(ll_blur, ll_blur), 0, 0 );
     
     //edges on that
     Mat ll_edges;
     Canny(ll_src, ll_edges, ll_edge, 3*ll_edge);
     
+
+    imshow("ll lines", ll_edges);
     
-    //imshow("ll_src", ll_src);
+    //(out, lines, resolution_in_pixels, resolution_in_radians, threshold, minLinLength, maxLineGap)
+    HoughLinesP(ll_edges, lines, 1, 1*CV_PI/180, 50, 10, 3);
     
-    //get lines
-    vector<Vec4i> ll_lines;
-    HoughLinesP(ll_edges, ll_lines, 1, CV_PI/180, 50, 50, 10 );
-    
-    //imshow("ll_edges", ll_edges);
-    
-    
-    //find line line intersections
-    vector<pair<int,vector<Point>>> pool_intersects = vector<pair<int,vector<Point>>>(4);
-    for (int i=0; i<ll_lines.size(); ++i) {
-        
-        for (int j=0; j<pool_outline.size(); ++j) {
-            temp = getIntersection(ll_lines[i], pool_outline[j]);
-            Point small, big;
-            small = Point(min(pool_outline[j][0], pool_outline[j][2]),min(pool_outline[j][1], pool_outline[j][3]));
-            big = Point(max(pool_outline[j][0], pool_outline[j][2]),max(pool_outline[j][1], pool_outline[j][3]));
-            
-            if (pointWithinBounds(temp, bounds)
-                && pointWithinBounds(temp, small, big)){/*
-                && (pointWithinBounds(Point(ll_lines[i][0], ll_lines[i][1]), small, big)
-                || pointWithinBounds(Point(ll_lines[i][2], ll_lines[i][3]), small, big))) {*/
-                
-                circle(final_img, temp, 3, Scalar(255,255,0));
-                
-                pool_intersects[j].first = j;
-                pool_intersects[j].second.push_back(temp);
-            }
-        }
+    for( size_t i = 0; i < lines.size(); i++ )
+    {
+        Vec4i l = lines[i];
+        line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
     }
-    imshow("final_img", final_img);
-    
-    //walls with most intersects are the ends
-    sort(pool_intersects.begin(), pool_intersects.end(), vec_pair_sort());
-    
-    line( final_img, Point(pool_outline[pool_intersects[0].first][0], pool_outline[pool_intersects[0].first][1]), Point(pool_outline[pool_intersects[0].first][2], pool_outline[pool_intersects[0].first][3]), Scalar(0,255,255), 2, CV_AA);
-    line( final_img, Point(pool_outline[pool_intersects[1].first][0], pool_outline[pool_intersects[1].first][1]), Point(pool_outline[pool_intersects[1].first][2], pool_outline[pool_intersects[1].first][3]), Scalar(0,255,255), 2, CV_AA);
-    line( final_img, Point(pool_outline[pool_intersects[2].first][0], pool_outline[pool_intersects[2].first][1]), Point(pool_outline[pool_intersects[2].first][2], pool_outline[pool_intersects[2].first][3]), Scalar(0,0,255), 2, CV_AA);
-    line( final_img, Point(pool_outline[pool_intersects[3].first][0], pool_outline[pool_intersects[3].first][1]), Point(pool_outline[pool_intersects[3].first][2], pool_outline[pool_intersects[3].first][3]), Scalar(0,0,255), 2, CV_AA);
-    
-    vector<Point> kmeans1, kmeans2;
-    vector<Point> poolside_side;
-    
-    cout <<pool_intersects[0].second.size() << ' '<<pool_intersects[1].second.size() << ' '<< pool_intersects[2].second.size() << ' '<< pool_intersects[3].second.size() << endl;
-    
-    /*
-    int my_k = NUM_LANES-1, my_threshold = 4;
-    kmeans1 = my_kmeans(pool_intersects[2].second, my_k, my_threshold);
-    kmeans2 = my_kmeans(pool_intersects[3].second, my_k, my_threshold);
-    //kmeans(pool_intersects[2].second, 3, kmeans1, TermCriteria(), 3, KMEANS_RANDOM_CENTERS);
-    //kmeans(pool_intersects[3].second, 3, kmeans2, TermCriteria(), 3, KMEANS_RANDOM_CENTERS);
     
     
-    for (int i=0; i<my_k; ++i) {
-        circle(final_img, kmeans1[i], 5, Scalar(255, 255, 255));
-        circle(final_img, kmeans2[i], 5, Scalar(255, 255, 255));
+    
+    
+    
+    
+    if (largest_pool.size() > 0) {
+        line(final_img, largest_pool[0], largest_pool[1], Scalar(0,0,255), 2);
+        line(final_img, largest_pool[1], largest_pool[2], Scalar(0,0,255), 2);
+        line(final_img, largest_pool[2], largest_pool[3], Scalar(0,0,255), 2);
+        line(final_img, largest_pool[3], largest_pool[0], Scalar(0,0,255), 2);
     }
-    */
-    
-    //label lanes
-    
-    Mat text = Mat::zeros(35, 200, CV_8UC3);
-    text = imread("stripes_neg_10.jpg");
-    const string blah = "A. Swimmer";
-    putText(text, blah, Point(0,25), FONT_HERSHEY_PLAIN, 1.7, CV_RGB(255, 255, 255));
-    //imshow("text", text);
-    
-    vector<Point2f> pool_corners{
-        Point(pool_outline[0][0],pool_outline[0][1]),
-        Point(pool_outline[1][0],pool_outline[1][1]),
-        Point(pool_outline[2][0],pool_outline[2][1]),
-        Point(pool_outline[3][2],pool_outline[3][3])
-    };
-    vector<Point2f> project_corners{Point2f(text.cols,text.rows),Point2f(0,0),Point2f(text.cols,0),Point2f(0,text.rows)};
     
     
-    /// Get the Perspective Transform
-    Mat warp_mat = getPerspectiveTransform(project_corners, pool_corners);
-    warpPerspective(text, text, warp_mat, Size(final_img.cols,final_img.rows));
-    //imshow("warped text", text);
-    //final_img = final_img + text;
+    circle(final_img, contour_moment, 7, Scalar(0,255,255));
+    rectangle(final_img, pool_rect, Scalar(0,255,255));
 
     //show image
     imshow("final_img", final_img);

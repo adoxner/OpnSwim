@@ -38,36 +38,20 @@ Mat edges_img;      //edges
 vector<Vec4i> lines;
 
 
-static int BLUR_KERNEL = 61;
+static unsigned BLUR_KERNEL = 61;
+static unsigned BINARY_THRESHOLD_OFFSET = 11;
 static double CANNY_T = 7.2;
 
 
-struct size_sort
-{
-    inline bool operator() (const Vec4i& struct1, const Vec4i& struct2)
-    {
-        Point a = {struct1[0], struct1[1]};
-        Point b = {struct1[2], struct1[3]};
-        Point c = {struct2[0], struct2[1]};
-        Point d = {struct2[2], struct2[3]};
-        
-        return (norm(a-b) < norm(c-d));
-    }
-};
-struct vec_pair_sort
-{
-    inline bool operator() (const pair<int, vector<Point>>& struct1, const pair<int, vector<Point>>& struct2)
-    {
-        return (struct1.second.size() < struct2.second.size());
-    }
-};
+
+
 
 
 /** @function main */
 int main( int argc, char** argv )
 {
     //open file
-    const char* filename = argc >= 2 ? argv[1] : "pools/2.jpg";
+    const char* filename = argc >= 2 ? argv[1] : "pools/4.jpg";
     src = imread(filename, 1);
     if(src.empty())
     {
@@ -95,6 +79,9 @@ int main( int argc, char** argv )
     
     
     
+    
+    
+    
     //***********  RGB SPLIT  *************
     
     split(blurred_img, rgb);
@@ -109,6 +96,9 @@ int main( int argc, char** argv )
 
     
     
+    
+    
+    
     //************  DOWNSAMPLE  *************
     
     Mat downsampled_b;
@@ -120,15 +110,15 @@ int main( int argc, char** argv )
     
     
     
-    // threshold
-    cout << "mean: " << cv::mean(downsampled_b) << '\n';
-    threshold(downsampled_b, downsampled_b, cv::mean(downsampled_b)[0]+10, 255, 3);
-    
-
-    
+    //************  THRESHOLD  ***************
+    cout << "mean: " << cv::mean(downsampled_b)[0] << '\n';
+    threshold(downsampled_b, downsampled_b, cv::mean(downsampled_b)[0]+BINARY_THRESHOLD_OFFSET, 255, 3);
     
     imshow("threshold", downsampled_b);
     //waitKey();
+    
+    
+    
     
     
     //**********  CANNY EDGE DETECTION  *************
@@ -138,6 +128,8 @@ int main( int argc, char** argv )
     
     //imshow("edges", edges);
     //waitKey();
+    
+    
     
     
     
@@ -177,10 +169,14 @@ int main( int argc, char** argv )
     
     
     
+    
+    
     //***********  HOUGH TRANSFORM ****************
     
     //(out, lines, resolution_in_pixels, resolution_in_radians, threshold, minLinLength, maxLineGap)
     HoughLinesP(edges, lines, 3, 1*CV_PI/180, 20, BLUR_KERNEL/3, BLUR_KERNEL/8 );
+    
+    
     
     
     
@@ -191,6 +187,7 @@ int main( int argc, char** argv )
     for( size_t i = 0; i < lines.size(); i++ )
     {
         Vec4i l = lines[i];
+        //cout << '(' << l[0] << ',' << l[1] << ") (" << l[2] << ',' << l[3] << ")\n";
         line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,0), 2, CV_AA);
     }
     
@@ -206,17 +203,30 @@ int main( int argc, char** argv )
     Point temp, temp1, temp2, bounds = Point(downsampled_b.cols, downsampled_b.rows);
     
     for (size_t i=0; i<lines.size(); ++i) {
+        //check to see if line is image frame
+        if (lines.at(i)[0] == 1 && lines.at(i)[2] == 1) continue;
+        if (lines.at(i)[0] == downsampled_b.cols && lines.at(i)[2] == downsampled_b.cols) continue;
+        if (lines.at(i)[1] == 1 && lines.at(i)[2] == 1) continue;
+        if (lines.at(i)[0] == downsampled_b.rows && lines.at(i)[2] == downsampled_b.rows) continue;
+        
+        
         for (size_t j=i+1; j<lines.size(); ++j) {
+            //check to see if line is image frame
+            if (lines.at(j)[0] == 1 && lines.at(j)[2] == 1) continue;
+            if (lines.at(j)[0] == downsampled_b.cols && lines.at(j)[2] == downsampled_b.cols) continue;
+            if (lines.at(j)[1] == 1 && lines.at(j)[2] == 1) continue;
+            if (lines.at(j)[0] == downsampled_b.rows && lines.at(j)[2] == downsampled_b.rows) continue;
+
             
             temp = getIntersection(lines.at(i), lines.at(j));
-            
+
             if (pointWithinBounds(temp, bounds) && pool_rect.contains(temp)) {
                 //if it's within bounds, add it
                 pair<Vec4i, Vec4i> p = pair<Vec4i, Vec4i>(lines.at(i), lines.at(j));
                 set1.push_back(p);
                 //circle(final_img, temp, 5, Scalar(255,0,255));
             }
-            
+
         }
     }
     cout << "Added " << set1.size() << " inbounds intersections. (set1)\n";
@@ -326,6 +336,7 @@ int main( int argc, char** argv )
     
     
     
+    
     //*************  FINAL FILTER  ******************
     // make this better
     
@@ -339,7 +350,14 @@ int main( int argc, char** argv )
             largest_pool = set2[i];
         }
     }
-    if (largest_pool.size() == 0) return 0;
+    if (largest_pool.size() == 0){
+        rectangle(final_img, pool_rect, Scalar(0,255,255));
+        imshow("final_img", final_img);
+        waitKey();
+        return 0;
+    }
+    
+    
     
     
     //**************  ORIENTATION  *****************
@@ -371,43 +389,50 @@ int main( int argc, char** argv )
     for( size_t i = 0; i < lines.size(); i++ )
     {
         Vec4i l = lines[i];
-        if ( pointPolygonTest(pool_contour, Point(l[0], l[1]), 0) > 0
-            ||pointPolygonTest(pool_contour, Point(l[2], l[3]), 0) > 0) {
+        if ( pointPolygonTest(largest_pool, Point(l[0], l[1]), 0) > 0
+            ||pointPolygonTest(largest_pool, Point(l[2], l[3]), 0) > 0) {
             
             Vec4i a = {largest_pool[0].x,largest_pool[0].y,largest_pool[1].x,largest_pool[1].y},
                     b = {largest_pool[1].x,largest_pool[1].y,largest_pool[2].x,largest_pool[2].y},
                     c = {largest_pool[2].x,largest_pool[2].y,largest_pool[3].x,largest_pool[3].y},
                     d = {largest_pool[3].x,largest_pool[3].y,largest_pool[0].x,largest_pool[0].y};
             
-            if (pool_rect.contains(getIntersection(l, a)) )
+            if (pointPolygonTest(largest_pool, getIntersection(l, a), 0) >= 0 ){
                 circle(final_img, getIntersection(l, a), 4, Scalar(255,255,0));
                 intersect_count[0]++;
-            if (pool_rect.contains(getIntersection(l, b)) )
+            }
+            if (pointPolygonTest(largest_pool, getIntersection(l, b), 0) >= 0  ){
                 circle(final_img, getIntersection(l, b), 4, Scalar(255,255,0));
                 intersect_count[1]++;
-            if (pool_rect.contains(getIntersection(l, c)) )
+            }
+            if (pointPolygonTest(largest_pool, getIntersection(l, c), 0) >= 0  ){
                 circle(final_img, getIntersection(l, c), 4, Scalar(255,255,0));
                 intersect_count[2]++;
-            if (pool_rect.contains(getIntersection(l, d)) )
+            }
+            if (pointPolygonTest(largest_pool, getIntersection(l, d), 0) >= 0  ){
                 circle(final_img, getIntersection(l, d), 4, Scalar(255,255,0));
                 intersect_count[3]++;
+            }
             
             
             inbounds_lines.push_back(l);
-            //line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
+            line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
         }
         
     }
     
-    unsigned side_1 = intersect_count[0]+intersect_count[2], side_2 = intersect_count[1]+intersect_count[3];
+    unsigned side_1 = intersect_count[0] +intersect_count[2], side_2 = intersect_count[1]+intersect_count[3];
     
     
-    cout << "side1: " << side_1 << " side2: " << side_2 << '\n';
+    
+    cout << "side_1: " << side_1 << " side_2: " << side_2 << '\n';
+    
+    //***************  LABELING  *****************
     
     if (largest_pool.size() > 0) {
         
         // pool ends are red
-        if (side_1 > side_2) {
+        if (side_1 >= side_2) {
             line(final_img, largest_pool[0], largest_pool[1], Scalar(0,0,255), 2);
             line(final_img, largest_pool[1], largest_pool[2], Scalar(255,255,255), 2);
             line(final_img, largest_pool[2], largest_pool[3], Scalar(0,0,255), 2);

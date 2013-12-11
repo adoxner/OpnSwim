@@ -21,8 +21,14 @@ double getAngle(Vec4i l1, Vec4i l2){
 Point getIntersection(Vec4i l1, Vec4i l2){
     Point intersect = Point(-1,-1);
     
-    double m1 = double(l1[3] - l1[1])/double(l1[2] - l1[0]);
-    double m2 = double(l2[3] - l2[1])/double(l2[2] - l2[0]);
+    double m1_denom = double(l1[2] - l1[0]);
+    double m2_denom = double(l2[2] - l2[0]);
+    
+    if (m1_denom == 0) m1_denom += 0.01;
+    if (m2_denom == 0) m2_denom += 0.01;
+    
+    double m1 = double(l1[3] - l1[1])/m1_denom;
+    double m2 = double(l2[3] - l2[1])/m2_denom;
     
     
 

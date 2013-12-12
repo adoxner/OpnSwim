@@ -13,7 +13,7 @@
 *.a
 
 # OS X
-.DS_Store
+*.DS_Store
 
 # Xcode
 DerivedData/

@@ -37,6 +37,7 @@ Mat edges_img;      //edges
 
 vector<Vec4i> lines;
 
+static int NUM_LANES = 8;
 
 static unsigned BLUR_KERNEL = 61;
 static unsigned BINARY_THRESHOLD_OFFSET = 11;
@@ -51,7 +52,26 @@ static double CANNY_T = 7.2;
 int main( int argc, char** argv )
 {
     //open file
-    const char* filename = argc >= 2 ? argv[1] : "pools/24.jpg";
+    //const char* filename = argc >= 2 ? argv[1] : "pools/2.jpg";
+    string filename = "";
+    
+    //debug
+    filename = "pools/11.jpg";
+    NUM_LANES = 8;
+    
+    
+    cout << "Enter file name: ";
+    cin >> filename;
+    cout << "Number of lanes: ";
+    cin >> NUM_LANES;
+    cout << '\n';
+    
+    
+    while (NUM_LANES < 0) {
+        cout << "Must be at least one lane. Please try again.\nNumber of lanes: ";
+        cin >> NUM_LANES;
+    }
+    
     src = imread(filename, 1);
     if(src.empty())
     {
@@ -299,22 +319,22 @@ int main( int argc, char** argv )
                     if (angle_i < angle_threshold_low || angle_i > angle_threshold_high) {
                         continue;
                         cout << angle_i << '\n';
-                        circle(final_img, pi, 10, Scalar(0,0,255));
+                        //circle(final_img, pi, 10, Scalar(0,0,255));
                     }
                     if (angle_j < angle_threshold_low || angle_j > angle_threshold_high) {
                         continue;
                         cout << angle_j << '\n';
-                        circle(final_img, pj, 10, Scalar(0,0,255));
+                        //circle(final_img, pj, 10, Scalar(0,0,255));
                     }
                     if (angle_t1 < angle_threshold_low || angle_t1 > angle_threshold_high) {
                         continue;
                         cout << angle_t1 << '\n';
-                        circle(final_img, temp1, 10, Scalar(0,0,255));
+                        //circle(final_img, temp1, 10, Scalar(0,0,255));
                     }
                     if (angle_t2 < angle_threshold_low || angle_t2 > angle_threshold_high) {
                         continue;
                         cout << angle_t2 << '\n';
-                        circle(final_img, temp2, 10, Scalar(0,0,255));
+                        //circle(final_img, temp2, 10, Scalar(0,0,255));
                     }
                     
                     
@@ -399,25 +419,25 @@ int main( int argc, char** argv )
                     d = {largest_pool[3].x,largest_pool[3].y,largest_pool[0].x,largest_pool[0].y};
             
             if (boundingRect(vector<Point>{Point(a[0],a[1]), Point(a[2],a[3])}).contains(getIntersection(l, a)) ){
-                circle(final_img, getIntersection(l, a), 4, Scalar(255,255,0));
+                //circle(final_img, getIntersection(l, a), 4, Scalar(255,255,0));
                 intersect_count[0]++;
             }
             if (boundingRect(vector<Point>{Point(b[0],b[1]), Point(b[2],b[3])}).contains(getIntersection(l, b)) ){
-                circle(final_img, getIntersection(l, b), 4, Scalar(255,255,0));
+                //circle(final_img, getIntersection(l, b), 4, Scalar(255,255,0));
                 intersect_count[1]++;
             }
             if (boundingRect(vector<Point>{Point(c[0],c[1]), Point(c[2],c[3])}).contains(getIntersection(l, c)) ){
-                circle(final_img, getIntersection(l, c), 4, Scalar(255,255,0));
+                //circle(final_img, getIntersection(l, c), 4, Scalar(255,255,0));
                 intersect_count[2]++;
             }
             if (boundingRect(vector<Point>{Point(d[0],d[1]), Point(d[2],d[3])}).contains(getIntersection(l, d)) ){
-                circle(final_img, getIntersection(l, d), 4, Scalar(255,255,0));
+                //circle(final_img, getIntersection(l, d), 4, Scalar(255,255,0));
                 intersect_count[3]++;
             }
             
             
             inbounds_lines.push_back(l);
-            line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
+            //line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
         }
         
     }
@@ -426,33 +446,79 @@ int main( int argc, char** argv )
     
     
     
-    cout << "side_1: " << side_1 << " side_2: " << side_2 << '\n';
+    //cout << "side_1: " << side_1 << " side_2: " << side_2 << '\n';
     
     //***************  LABELING  *****************
+    
+    Mat _lane = imread("_lane.jpg");
+    Mat _line = imread("_line.jpg");
+    
+    //check load
+    if (_lane.empty() || _line.empty() || _lane.cols != _line.cols) {
+        cout << "Error reading lane line image.\n";
+        imshow("final_img", final_img);
+        waitKey();
+        return 2;
+    }
+    
+    unsigned pool_height = NUM_LANES*_lane.rows + (NUM_LANES-1)*_line.rows;
+    Mat text = Mat::zeros(pool_height, _lane.cols, CV_8UC3);
+    unsigned current_row = 0;
+    
+    for (int i=0; i<NUM_LANES; ++i) {
+        text(Range(current_row, current_row+_lane.rows), Range::all()) += _lane;
+        current_row += _lane.rows;
+        if (i < NUM_LANES-1)
+            text(Range(current_row, current_row + _line.rows), Range::all()) += _line;
+        current_row +=  _line.rows;
+    }
+    
+
+    //const string blah = "A. Swimmer";
+    //putText(text, blah, Point(0,25), FONT_HERSHEY_PLAIN, 1.7, CV_RGB(255, 255, 255));
+    //imshow("text", text);
+    //waitKey();
+    
+    final_img = src;
+    int scale = 2;
+    
+    vector<Point2f> project_corners{Point2f(text.cols,text.rows),Point2f(0,0),Point2f(text.cols,0),Point2f(0,text.rows)};
+    vector<Point2f> pool_corners1 = {largest_pool[2]*scale, largest_pool[0]*scale, largest_pool[3]*scale, largest_pool[1]*scale};
+    vector<Point2f> pool_corners2 = {largest_pool[0]*scale, largest_pool[2]*scale, largest_pool[3]*scale, largest_pool[1]*scale};
+    
+    
+    
+    /// Get the Perspective Transform and plot
     
     if (largest_pool.size() > 0) {
         
         // pool ends are red
         if (side_1 >= side_2) {
-            line(final_img, largest_pool[0], largest_pool[1], Scalar(0,0,255), 2);
-            line(final_img, largest_pool[1], largest_pool[2], Scalar(255,255,255), 2);
-            line(final_img, largest_pool[2], largest_pool[3], Scalar(0,0,255), 2);
-            line(final_img, largest_pool[3], largest_pool[0], Scalar(255,255,255), 2);
+            line(final_img, largest_pool[0]*scale, largest_pool[1]*scale, Scalar(0,0,255), 2);
+            line(final_img, largest_pool[1]*scale, largest_pool[2]*scale, Scalar(255,255,255), 2);
+            line(final_img, largest_pool[2]*scale, largest_pool[3]*scale, Scalar(0,0,255), 2);
+            line(final_img, largest_pool[3]*scale, largest_pool[0]*scale, Scalar(255,255,255), 2);
+            
+            Mat warp_mat = getPerspectiveTransform(project_corners, pool_corners1);
+            warpPerspective(text, text, warp_mat, Size(final_img.cols,final_img.rows));
+            final_img = final_img + text;
         }else{
-            line(final_img, largest_pool[0], largest_pool[1], Scalar(255,255,255), 2);
-            line(final_img, largest_pool[1], largest_pool[2], Scalar(0,0,255), 2);
-            line(final_img, largest_pool[2], largest_pool[3], Scalar(255,255,255), 2);
-            line(final_img, largest_pool[3], largest_pool[0], Scalar(0,0,255), 2);
+            line(final_img, largest_pool[0]*scale, largest_pool[1]*scale, Scalar(255,255,255), 2);
+            line(final_img, largest_pool[1]*scale, largest_pool[2]*scale, Scalar(0,0,255), 2);
+            line(final_img, largest_pool[2]*scale, largest_pool[3]*scale, Scalar(255,255,255), 2);
+            line(final_img, largest_pool[3]*scale, largest_pool[0]*scale, Scalar(0,0,255), 2);
+            
+            Mat warp_mat = getPerspectiveTransform(project_corners, pool_corners2);
+            warpPerspective(text, text, warp_mat, Size(final_img.cols,final_img.rows));
+            final_img = final_img + text;
         }
         
         
     }
     
+    //circle(final_img, contour_moment, 7, Scalar(0,255,255));
+    //rectangle(final_img, pool_rect, Scalar(0,255,255));
     
-
-    
-    circle(final_img, contour_moment, 7, Scalar(0,255,255));
-    rectangle(final_img, pool_rect, Scalar(0,255,255));
 
     //show image
     imshow("final_img", final_img);

@@ -51,7 +51,7 @@ static double CANNY_T = 7.2;
 int main( int argc, char** argv )
 {
     //open file
-    const char* filename = argc >= 2 ? argv[1] : "pools/4.jpg";
+    const char* filename = argc >= 2 ? argv[1] : "pools/24.jpg";
     src = imread(filename, 1);
     if(src.empty())
     {
@@ -68,6 +68,8 @@ int main( int argc, char** argv )
     if (BLUR_KERNEL % 2 == 0) BLUR_KERNEL++;
     //BLUR_KERNEL -= 10;
     if (BLUR_KERNEL > 90) BLUR_KERNEL = 91;
+    
+
     cout << "BLUR_KERNEL: " << BLUR_KERNEL << '\n';
     
     
@@ -81,12 +83,12 @@ int main( int argc, char** argv )
     
     
     
-    
     //***********  RGB SPLIT  *************
     
     split(blurred_img, rgb);
 
-    GaussianBlur( src_gray + rgb[0] - rgb[2] , src_gray, Size(BLUR_KERNEL, BLUR_KERNEL), 0, 0 );
+    //GaussianBlur( src_gray + rgb[0] - rgb[2] , src_gray, Size(BLUR_KERNEL, BLUR_KERNEL), 0, 0 );
+    GaussianBlur( rgb[1] - rgb[2], src_gray, Size(BLUR_KERNEL, BLUR_KERNEL), 0, 0 );
     //src_gray = src_gray + rgb[0] - rgb[2];
     
     Mat temp_mat;
@@ -146,7 +148,8 @@ int main( int argc, char** argv )
     
     for (int i=0; i<contours.size(); ++i) {
         double area = contourArea(contours[i]);
-        if (area > current_largest_contour_area) {
+        if (area > current_largest_contour_area
+            && boundingRect(contours[i]).br().y > downsampled_b.rows/2) {
             current_largest_contour_area = area;
             that_countour = i;
         }
@@ -161,7 +164,7 @@ int main( int argc, char** argv )
     Point contour_moment = Point(m.m10/m.m00, m.m01/m.m00);
     
     Rect pool_rect = boundingRect(pool_contour);
-    int pool_fix = BLUR_KERNEL/3;
+    int pool_fix = BLUR_KERNEL/2;
     pool_rect.x -= pool_fix;
     pool_rect.y -= pool_fix;
     pool_rect.width += pool_fix*2;
@@ -174,7 +177,7 @@ int main( int argc, char** argv )
     //***********  HOUGH TRANSFORM ****************
     
     //(out, lines, resolution_in_pixels, resolution_in_radians, threshold, minLinLength, maxLineGap)
-    HoughLinesP(edges, lines, 3, 1*CV_PI/180, 20, BLUR_KERNEL/3, BLUR_KERNEL/8 );
+    HoughLinesP(edges, lines, 3, 1*CV_PI/180, 25, BLUR_KERNEL/3, BLUR_KERNEL/8 );
     
     
     
@@ -338,7 +341,6 @@ int main( int argc, char** argv )
     
     
     //*************  FINAL FILTER  ******************
-    // make this better
     
     // naive solution: largest
     vector<Point> largest_pool;
@@ -361,10 +363,9 @@ int main( int argc, char** argv )
     
     
     //**************  ORIENTATION  *****************
-    // finish me!
 
     double ll_blur = 5;
-    double ll_edge = 8;
+    double ll_edge = 3;
     
     //re-blur src
     Mat ll_src = rgb[1]-rgb[2];
@@ -382,7 +383,7 @@ int main( int argc, char** argv )
     imshow("ll lines", ll_edges);
     
     //(out, lines, resolution_in_pixels, resolution_in_radians, threshold, minLinLength, maxLineGap)
-    HoughLinesP(ll_edges, lines, 1, 1*CV_PI/180, 30, 10, 3);
+    HoughLinesP(ll_edges, lines, 1, 1*CV_PI/180, 20, BLUR_KERNEL/5, 3);
     vector<Vec4i> inbounds_lines;
     vector<unsigned> intersect_count = {0,0,0,0};
     
@@ -390,26 +391,26 @@ int main( int argc, char** argv )
     {
         Vec4i l = lines[i];
         if ( pointPolygonTest(largest_pool, Point(l[0], l[1]), 0) > 0
-            ||pointPolygonTest(largest_pool, Point(l[2], l[3]), 0) > 0) {
+            || pointPolygonTest(largest_pool, Point(l[2], l[3]), 0) > 0) {
             
             Vec4i a = {largest_pool[0].x,largest_pool[0].y,largest_pool[1].x,largest_pool[1].y},
                     b = {largest_pool[1].x,largest_pool[1].y,largest_pool[2].x,largest_pool[2].y},
                     c = {largest_pool[2].x,largest_pool[2].y,largest_pool[3].x,largest_pool[3].y},
                     d = {largest_pool[3].x,largest_pool[3].y,largest_pool[0].x,largest_pool[0].y};
             
-            if (pointPolygonTest(largest_pool, getIntersection(l, a), 0) >= 0 ){
+            if ( boundingRect(vector<Point>{Point(a[0],a[1]), Point(a[2],a[3])}).contains(getIntersection(l, a)) ){
                 circle(final_img, getIntersection(l, a), 4, Scalar(255,255,0));
                 intersect_count[0]++;
             }
-            if (pointPolygonTest(largest_pool, getIntersection(l, b), 0) >= 0  ){
+            if (boundingRect(vector<Point>{Point(b[0],b[1]), Point(b[2],b[3])}).contains(getIntersection(l, b)) ){
                 circle(final_img, getIntersection(l, b), 4, Scalar(255,255,0));
                 intersect_count[1]++;
             }
-            if (pointPolygonTest(largest_pool, getIntersection(l, c), 0) >= 0  ){
+            if (boundingRect(vector<Point>{Point(c[0],c[1]), Point(c[2],c[3])}).contains(getIntersection(l, c)) ){
                 circle(final_img, getIntersection(l, c), 4, Scalar(255,255,0));
                 intersect_count[2]++;
             }
-            if (pointPolygonTest(largest_pool, getIntersection(l, d), 0) >= 0  ){
+            if (boundingRect(vector<Point>{Point(d[0],d[1]), Point(d[2],d[3])}).contains(getIntersection(l, d)) ){
                 circle(final_img, getIntersection(l, d), 4, Scalar(255,255,0));
                 intersect_count[3]++;
             }

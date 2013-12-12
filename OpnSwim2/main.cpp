@@ -398,7 +398,7 @@ int main( int argc, char** argv )
                     c = {largest_pool[2].x,largest_pool[2].y,largest_pool[3].x,largest_pool[3].y},
                     d = {largest_pool[3].x,largest_pool[3].y,largest_pool[0].x,largest_pool[0].y};
             
-            if ( boundingRect(vector<Point>{Point(a[0],a[1]), Point(a[2],a[3])}).contains(getIntersection(l, a)) ){
+            if (boundingRect(vector<Point>{Point(a[0],a[1]), Point(a[2],a[3])}).contains(getIntersection(l, a)) ){
                 circle(final_img, getIntersection(l, a), 4, Scalar(255,255,0));
                 intersect_count[0]++;
             }
@@ -449,9 +449,7 @@ int main( int argc, char** argv )
     }
     
     
-    
-    
-    
+
     
     circle(final_img, contour_moment, 7, Scalar(0,255,255));
     rectangle(final_img, pool_rect, Scalar(0,255,255));

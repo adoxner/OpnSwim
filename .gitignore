@@ -13,8 +13,12 @@
 *.a
 
 # OS X
-*.DS_Store
+.DS_Store
+.Trashes
+*.swp
+profile
 
 # Xcode
 DerivedData/
 build/
+*~.nib

@@ -9,8 +9,6 @@
 #include <iostream>
 #include <vector>
 
-// Put images in /Users/adoxner/Documents/School/EECS 442/Final project/OpnSwim2/DerivedData/OpnSwim2/Build/Products
-
 
 
 #include <opencv2/opencv.hpp>
@@ -20,7 +18,6 @@
 #include <thread>
 #include <utility>
 #include "getIntersection.h"
-#include "Quadrilateral.h"
 
 using namespace cv;
 using namespace std;
@@ -43,8 +40,34 @@ static unsigned BLUR_KERNEL = 61;
 static unsigned BINARY_THRESHOLD_OFFSET = 11;
 static double CANNY_T = 7.2;
 
+vector<Point> input_corners;
 
-
+//Callback for mousclick event, the x-y coordinate of mouse button-up and button-down
+//are stored in two points pt1, pt2.
+void mouse_click(int event, int x, int y, int flags, void *param)
+{
+    
+    switch(event)
+    {
+        case CV_EVENT_LBUTTONDOWN:
+        {
+            
+            if (input_corners.size() < 4) {
+                cout << "Input: (" << x << ',' << y << ")\n";
+                input_corners.push_back(Point(x,y));
+                if (input_corners.size() == 4)
+                    cout << "Press any key to continue.\n";
+            }else{
+                cout << "Four points already entered!\n";
+                cout << "Press any key to continue.\n";
+            }
+            
+            break;
+        }
+            
+    }
+    
+}
 
 
 
@@ -56,18 +79,18 @@ int main( int argc, char** argv )
     string filename = "";
     
     //debug
-    filename = "pools/11.jpg";
-    NUM_LANES = 8;
+    filename = "pools/24.jpg";
+    NUM_LANES = 1;
     
     
+    //user input
     cout << "Enter file name: ";
     cin >> filename;
     cout << "Number of lanes: ";
     cin >> NUM_LANES;
-    cout << '\n';
     
     
-    while (NUM_LANES < 0) {
+    while (NUM_LANES < 1) {
         cout << "Must be at least one lane. Please try again.\nNumber of lanes: ";
         cin >> NUM_LANES;
     }
@@ -75,11 +98,23 @@ int main( int argc, char** argv )
     src = imread(filename, 1);
     if(src.empty())
     {
-        //help();
         std::cout << "can not open " << filename << endl;
         return -1;
     }
     cvtColor(src, src_gray, CV_RGB2GRAY);
+    
+    
+    
+    
+    //get user input for RMS testing
+    //error checking
+    /*
+    imshow("Click corners", src);
+    cvSetMouseCallback("Click corners", mouse_click, 0);
+    waitKey();
+     */
+    
+    
     
     
     //**********  CALCULATE BLUR RADIUS  ************
@@ -90,7 +125,7 @@ int main( int argc, char** argv )
     if (BLUR_KERNEL > 90) BLUR_KERNEL = 91;
     
 
-    cout << "BLUR_KERNEL: " << BLUR_KERNEL << '\n';
+    //cout << "BLUR_KERNEL: " << BLUR_KERNEL << '\n';
     
     
     
@@ -133,10 +168,10 @@ int main( int argc, char** argv )
     
     
     //************  THRESHOLD  ***************
-    cout << "mean: " << cv::mean(downsampled_b)[0] << '\n';
+    //cout << "mean: " << cv::mean(downsampled_b)[0] << '\n';
     threshold(downsampled_b, downsampled_b, cv::mean(downsampled_b)[0]+BINARY_THRESHOLD_OFFSET, 255, 3);
     
-    imshow("threshold", downsampled_b);
+    //imshow("threshold", downsampled_b);
     //waitKey();
     
     
@@ -177,7 +212,7 @@ int main( int argc, char** argv )
     
     edges = Mat::zeros(edges.rows, edges.cols, CV_8U);
     drawContours(edges, contours, that_countour, Scalar(255,0,255));
-    imshow("edges", edges);
+    //imshow("edges", edges);
     
     vector<Point> pool_contour = contours[that_countour];
     Moments m = moments(pool_contour);
@@ -204,7 +239,7 @@ int main( int argc, char** argv )
     
     
     //drawing lines
-    cout << "Found " << lines.size() << " lines.\n";
+    //cout << "Found " << lines.size() << " lines.\n";
     cvtColor(downsampled_b, final_img, CV_GRAY2BGR);
     pyrDown( src, final_img, Size( rgb[2].cols/2, rgb[2].rows/2 ));
     for( size_t i = 0; i < lines.size(); i++ )
@@ -252,7 +287,7 @@ int main( int argc, char** argv )
 
         }
     }
-    cout << "Added " << set1.size() << " inbounds intersections. (set1)\n";
+    //cout << "Added " << set1.size() << " inbounds intersections. (set1)\n";
     
     
     
@@ -355,7 +390,7 @@ int main( int argc, char** argv )
             }
         }
     }
-    cout << "Found " << set2.size() << " pool candidates. (set2)\n";
+    //cout << "Found " << set2.size() << " pool candidates. (set2)\n";
     
     
     
@@ -372,6 +407,8 @@ int main( int argc, char** argv )
             largest_pool = set2[i];
         }
     }
+    
+    //if there is no pool, show the original with some marks, then return
     if (largest_pool.size() == 0){
         rectangle(final_img, pool_rect, Scalar(0,255,255));
         imshow("final_img", final_img);
@@ -393,14 +430,14 @@ int main( int argc, char** argv )
     
     GaussianBlur( ll_src, ll_src, Size(ll_blur, ll_blur), 0, 0 );
     
-    imshow("ll_src", ll_src);
+    //imshow("ll_src", ll_src);
     
     //edges on that
     Mat ll_edges;
     Canny(ll_src, ll_edges, ll_edge, 3*ll_edge);
     
 
-    imshow("ll lines", ll_edges);
+    //imshow("ll lines", ll_edges);
     
     //(out, lines, resolution_in_pixels, resolution_in_radians, threshold, minLinLength, maxLineGap)
     HoughLinesP(ll_edges, lines, 1, 1*CV_PI/180, 20, BLUR_KERNEL/5, 3);
@@ -516,12 +553,48 @@ int main( int argc, char** argv )
         
     }
     
+    
+    //*******************  RMS TESTING  ************************
+    Point inp;
+    double temp_closest_d=0;
+    vector<Point> pcorns= {largest_pool[2]*scale, largest_pool[0]*scale, largest_pool[3]*scale, largest_pool[1]*scale};
+    vector<Point> matching_pcorns;
+    double RMS = 0.0;
+    int ttt=-1;
+    for (int i=0; i<input_corners.size(); ++i) {
+        inp = input_corners[i];
+        temp_closest_d = -1;
+        
+        
+        for (int j=0; j<pcorns.size(); j++) {
+            if (temp_closest_d == -1 || norm(inp-pcorns[j])<temp_closest_d){
+                temp_closest_d = norm(inp-pcorns[j]);
+                ttt=j;
+            }
+        }
+        pcorns.erase(pcorns.begin()+ttt);
+        RMS += pow(temp_closest_d, 2);
+    }
+    
+    
+    if (input_corners.size() > 0){
+        RMS /= 4;
+        RMS = sqrt(RMS);
+        RMS /= sqrt(pow(src.cols,2) + pow(src.rows,2));
+        RMS *= 100;
+        cout << "RMS Error: " << RMS << "%\n";
+    }
+    
+    
+    
+    
     //circle(final_img, contour_moment, 7, Scalar(0,255,255));
     //rectangle(final_img, pool_rect, Scalar(0,255,255));
     
 
     //show image
-    imshow("final_img", final_img);
+    imshow("Result: " + filename, final_img);
+    cout << "Press any key to exit.\n";
     waitKey();
     
     return 0;

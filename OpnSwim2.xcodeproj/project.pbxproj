@@ -26,7 +26,6 @@
 		4F7B3DB51827329C00CD5944 /* libopencv_ts.2.4.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F7B3DA41827329C00CD5944 /* libopencv_ts.2.4.3.dylib */; };
 		4F7B3DB61827329C00CD5944 /* libopencv_video.2.4.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F7B3DA51827329C00CD5944 /* libopencv_video.2.4.3.dylib */; };
 		4F7B3DB71827329C00CD5944 /* libopencv_videostab.2.4.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F7B3DA61827329C00CD5944 /* libopencv_videostab.2.4.3.dylib */; };
-		4FC801421830521F00B6B251 /* Quadrilateral.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FC801401830521F00B6B251 /* Quadrilateral.cpp */; };
 		4FC80145183055E300B6B251 /* getIntersection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FC80143183055E300B6B251 /* getIntersection.cpp */; };
 /* End PBXBuildFile section */
 
@@ -65,8 +64,6 @@
 		4F7B3DA51827329C00CD5944 /* libopencv_video.2.4.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_video.2.4.3.dylib; sourceTree = "<group>"; };
 		4F7B3DA61827329C00CD5944 /* libopencv_videostab.2.4.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_videostab.2.4.3.dylib; sourceTree = "<group>"; };
 		4FC425E918569E460052AC22 /* main */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = main; sourceTree = "<group>"; };
-		4FC801401830521F00B6B251 /* Quadrilateral.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Quadrilateral.cpp; sourceTree = "<group>"; };
-		4FC801411830521F00B6B251 /* Quadrilateral.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Quadrilateral.h; sourceTree = "<group>"; };
 		4FC80143183055E300B6B251 /* getIntersection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = getIntersection.cpp; sourceTree = "<group>"; };
 		4FC80144183055E300B6B251 /* getIntersection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = getIntersection.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -164,8 +161,6 @@
 			children = (
 				4FC80144183055E300B6B251 /* getIntersection.h */,
 				4FC80143183055E300B6B251 /* getIntersection.cpp */,
-				4FC801411830521F00B6B251 /* Quadrilateral.h */,
-				4FC801401830521F00B6B251 /* Quadrilateral.cpp */,
 			);
 			name = "Custom classes";
 			sourceTree = "<group>";
@@ -222,7 +217,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				4F7B3D8E1826F0EF00CD5944 /* main.cpp in Sources */,
-				4FC801421830521F00B6B251 /* Quadrilateral.cpp in Sources */,
 				4FC80145183055E300B6B251 /* getIntersection.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

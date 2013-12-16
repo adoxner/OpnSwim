@@ -490,8 +490,8 @@ int main( int argc, char** argv )
     
     //***************  LABELING  *****************
     
-    Mat _lane = imread("_lane.jpg");
-    Mat _line = imread("_line.jpg");
+    Mat _lane = imread("resources/_lane.jpg");
+    Mat _line = imread("resources/_line.jpg");
     
     //check load
     if (_lane.empty() || _line.empty() || _lane.cols != _line.cols) {
@@ -597,7 +597,7 @@ int main( int argc, char** argv )
 
     //show image
     imshow("Result: " + filename, final_img);
-    cout << "Press any key to exit.\n";
+    //cout << "Press any key to exit.\n";
     waitKey();
     
     return 0;

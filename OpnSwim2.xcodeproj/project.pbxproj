@@ -68,8 +68,6 @@
 		4F38EA8B185E3C1700BD8B22 /* 7.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = 7.jpg; sourceTree = "<group>"; };
 		4F38EA8C185E3C1700BD8B22 /* 8.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = 8.jpg; sourceTree = "<group>"; };
 		4F38EA8D185E3C1700BD8B22 /* 9.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = 9.jpg; sourceTree = "<group>"; };
-		4F38EA8E185E486500BD8B22 /* _lane.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = _lane.jpg; path = DerivedData/OpnSwim2/Build/Products/Debug/_lane.jpg; sourceTree = "<group>"; };
-		4F38EA8F185E486500BD8B22 /* _line.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = _line.jpg; path = DerivedData/OpnSwim2/Build/Products/Debug/_line.jpg; sourceTree = "<group>"; };
 		4F38EA90185FA4B000BD8B22 /* final_report.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = final_report.pdf; sourceTree = "<group>"; };
 		4F7B3D8A1826F0EF00CD5944 /* OpnSwim2 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = OpnSwim2; sourceTree = BUILT_PRODUCTS_DIR; };
 		4F7B3D8D1826F0EF00CD5944 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
@@ -160,8 +158,6 @@
 			isa = PBXGroup;
 			children = (
 				4F38EA90185FA4B000BD8B22 /* final_report.pdf */,
-				4F38EA8E185E486500BD8B22 /* _lane.jpg */,
-				4F38EA8F185E486500BD8B22 /* _line.jpg */,
 				4F38EA74185E3C1700BD8B22 /* pools */,
 				4F7B3DB8182732B000CD5944 /* OpenCV */,
 				4F7B3D8C1826F0EF00CD5944 /* OpnSwim2 */,

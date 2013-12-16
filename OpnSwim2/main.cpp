@@ -150,7 +150,8 @@ int main( int argc, char** argv )
     GaussianBlur(src_gray, temp_mat, cv::Size(0,0), 3);
     addWeighted(src_gray, 1.5, temp_mat, -0.9, 0, temp_mat);
     src_gray = temp_mat;
-
+    
+    //imshow("src_gray", src_gray);
     
     
     
@@ -239,16 +240,19 @@ int main( int argc, char** argv )
     
     
     //drawing lines
+    
     //cout << "Found " << lines.size() << " lines.\n";
     cvtColor(downsampled_b, final_img, CV_GRAY2BGR);
     pyrDown( src, final_img, Size( rgb[2].cols/2, rgb[2].rows/2 ));
+    
+    /*
     for( size_t i = 0; i < lines.size(); i++ )
     {
         Vec4i l = lines[i];
         //cout << '(' << l[0] << ',' << l[1] << ") (" << l[2] << ',' << l[3] << ")\n";
-        line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,0), 2, CV_AA);
+        //line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,0), 2, CV_AA);
     }
-    
+    */
     
     
     
@@ -263,17 +267,17 @@ int main( int argc, char** argv )
     for (size_t i=0; i<lines.size(); ++i) {
         //check to see if line is image frame
         if (lines.at(i)[0] == 1 && lines.at(i)[2] == 1) continue;
-        if (lines.at(i)[0] == downsampled_b.cols && lines.at(i)[2] == downsampled_b.cols) continue;
+        if (lines.at(i)[0] == downsampled_b.cols && lines.at(i)[2] == downsampled_b.cols-1) continue;
         if (lines.at(i)[1] == 1 && lines.at(i)[2] == 1) continue;
-        if (lines.at(i)[0] == downsampled_b.rows && lines.at(i)[2] == downsampled_b.rows) continue;
+        if (lines.at(i)[0] == downsampled_b.rows && lines.at(i)[2] == downsampled_b.rows-1) continue;
         
         
         for (size_t j=i+1; j<lines.size(); ++j) {
             //check to see if line is image frame
             if (lines.at(j)[0] == 1 && lines.at(j)[2] == 1) continue;
-            if (lines.at(j)[0] == downsampled_b.cols && lines.at(j)[2] == downsampled_b.cols) continue;
+            if (lines.at(j)[0] == downsampled_b.cols && lines.at(j)[2] == downsampled_b.cols-1) continue;
             if (lines.at(j)[1] == 1 && lines.at(j)[2] == 1) continue;
-            if (lines.at(j)[0] == downsampled_b.rows && lines.at(j)[2] == downsampled_b.rows) continue;
+            if (lines.at(j)[0] == downsampled_b.rows && lines.at(j)[2] == downsampled_b.rows-1) continue;
 
             
             temp = getIntersection(lines.at(i), lines.at(j));
@@ -282,7 +286,7 @@ int main( int argc, char** argv )
                 //if it's within bounds, add it
                 pair<Vec4i, Vec4i> p = pair<Vec4i, Vec4i>(lines.at(i), lines.at(j));
                 set1.push_back(p);
-                //circle(final_img, temp, 5, Scalar(255,0,255));
+                circle(final_img, temp, 5, Scalar(255,0,255));
             }
 
         }
@@ -296,7 +300,6 @@ int main( int argc, char** argv )
     
     //************  SET 2  ************
     
-    //narrow down set 1 further to sets of three lines that have two intersects in frame (set 2)
     vector< vector<Point> > set2;
     double dist_limit = max(downsampled_b.cols, downsampled_b.rows)/3.0;
     double angle_threshold_low = 20.0, angle_threshold_high = 170;
@@ -392,7 +395,7 @@ int main( int argc, char** argv )
     }
     //cout << "Found " << set2.size() << " pool candidates. (set2)\n";
     
-    
+    //imshow("final_img", final_img);
     
     
     //*************  FINAL FILTER  ******************
@@ -474,7 +477,7 @@ int main( int argc, char** argv )
             
             
             inbounds_lines.push_back(l);
-            //line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
+            line( final_img, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,255,0), 2, CV_AA);
         }
         
     }

@@ -8,12 +8,7 @@
 
 #include "getIntersection.h"
 
-double getAngle(Vec4i l1, Vec4i l2){
-    
-    double a1 =  atan2(l1[3] - l1[1], l1[2] - l1[0]) * 180.0 / CV_PI;
-    double a2 =  atan2(l2[3] - l2[1], l2[2] - l2[0]) * 180.0 / CV_PI;
-    return a1-a2;
-}
+
 
 /*
  *Finds intersection of two lines

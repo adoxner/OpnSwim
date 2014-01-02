@@ -10,3 +10,5 @@ Detects and labels pool and lanelines from an image. Please see [final_report.pd
 
 <h3>System requirements</h3>
 - [OpenCV](opencv.org) installed locally
+
+<img src="https://ga-beacon.appspot.com/UA-43184701-3/OpnSwim/README/" \>

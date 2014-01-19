@@ -12,3 +12,7 @@ Detects and labels pool and lanelines from an image. Please see [final_report.pd
 - [OpenCV](opencv.org) installed locally
 
 <img src="https://ga-beacon.appspot.com/UA-43184701-3/OpnSwim/README?pixel" \>
+
+<h3>License</h3>
+
+OpnSwim is released under the [MIT license](https://github.com/adoxner/OpnSwim/blob/master/LICENSE.md). 
